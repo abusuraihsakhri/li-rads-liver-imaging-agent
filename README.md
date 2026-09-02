@@ -1,84 +1,106 @@
-# LI-RADS Liver Imaging Agent
+# Li Rads Liver Imaging Agent
 
-> **ACR LI-RADS v2018** liver observation categorization tool.
+> **Domain:** Diagnostic Radiology & Medical Imaging AI  
+> **Reference Guidelines & Standards:** `American College of Radiology (ACR) RADS & Fleischner Society`
 
-## Overview
+<div align="center">
 
-Implements LI-RADS (Liver Imaging Reporting and Data System) for categorizing liver observations in patients at risk for hepatocellular carcinoma (HCC). Applies major features (arterial hyperenhancement, washout, enhancing capsule, threshold growth) and size thresholds to assign categories LR-1 through LR-5, LR-M, and LR-TIV.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
+![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
+![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
-## LI-RADS Categories
+</div>
 
-| Category | Label | Description |
-|----------|-------|-------------|
-| **LR-NC** | Not categorizable | Inadequate imaging |
-| **LR-1** | Definitely benign | Cyst, hemangioma, etc. |
-| **LR-2** | Probably benign | <10mm without features |
-| **LR-3** | Intermediate | Equivocal probability |
-| **LR-4** | Probably HCC | AHE without washout/capsule/growth |
-| **LR-5** | Definitely HCC | >=10mm + AHE + (washout OR growth OR capsule) |
-| **LR-M** | Malignancy, not HCC-specific | Features suggest cholangiocarcinoma |
-| **LR-TIV** | Tumor in vein | Enhancing soft tissue in vein |
+---
 
-## LR-5 Criteria
+## 📖 What It Does
 
-For observations >=10mm in at-risk liver:
-- **Required**: Arterial hyperenhancement (AHE)
-- **Plus one or more**: Non-peripheral washout, threshold growth (>=50% in <=6 months), enhancing capsule
+**Li Rads Liver Imaging Agent** is an advanced analytical and computational platform implementing Cirrhotic Liver Nodule LI-RADS v2018 Enhancement Kinetics.
 
-## Treatment Eligibility
+---
 
-- **LR-5**: Eligible for HCC treatment without biopsy
-- **LR-TIV**: Eligible for HCC treatment
-- **LR-4**: Consider biopsy or short-interval follow-up
+## ⚙️ Key Capabilities & Algorithmic Modules
 
-## CLI Usage
+### 🔬 Core Algorithmic & Evaluation Engines
+
+- **`Severity`** — dedicated module for severity evaluation and state verification.
+- **`DomainKnowledgeRegistry`**: Enterprise domain rules, guideline matrices, and evidence benchmarks.
+- **`AgentAlert`** — dedicated module for agent alert evaluation and state verification.
+- **`EnhancementKineticsAgent`**: Specialized Sub-Agent 1 for li-rads-liver-imaging-agent
+- **`MajorFeatureCounterAgent`**: Specialized Sub-Agent 2 for li-rads-liver-imaging-agent
+- **`LIRADSCategoryMatcherAgent`**: Specialized Sub-Agent 3 for li-rads-liver-imaging-agent
+
+---
+
+## 💻 CLI Quickstart & Usage
+
+### 1. Guided Interactive Mode
+```bash
+python cli.py
+```
+
+### 2. Direct Parameterized Evaluation
+```bash
+python cli.py --size <value> --modality <value> --ahe <value> --washout <value>
+```
+
+### Parameter Reference
+- `--size`: Specifies input measurement or parameter value.
+- `--modality`: Specifies input measurement or parameter value.
+- `--ahe`: Specifies input measurement or parameter value.
+- `--washout`: Specifies input measurement or parameter value.
+- `--capsule`: Specifies input measurement or parameter value.
+- `--growth`: Specifies input measurement or parameter value.
+- `--prior-size`: Specifies input measurement or parameter value.
+- `--prior-months`: Specifies input measurement or parameter value.
+- `--tumor-in-vein`: Specifies input measurement or parameter value.
+- `--definitely-benign`: Specifies input measurement or parameter value.
+
+### Input Data Schema
+
+| Field | Description | Requirement |
+|:------|:------------|:------------|
+| `case_id` | Parameter / observation metric | Required |
+| `patient_synthetic_id` | Parameter / observation metric | Required |
+| `metric_primary` | Parameter / observation metric | Required |
+| `metric_secondary` | Parameter / observation metric | Required |
+| `is_stat` | Parameter / observation metric | Required |
+| `status_flag` | Parameter / observation metric | Required |
+
+---
+
+## 🛡️ Security & Enterprise Architecture
+
+* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
+* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
+* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
+* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite:
 
 ```bash
-# Categorize a typical LR-5 observation
-python cli.py categorize --size 20 --ahe --washout --capsule
-
-# Categorize with growth
-python cli.py categorize --size 15 --ahe --growth --prior-size 8 --prior-months 4
-
-# Categorize a benign observation
-python cli.py categorize --size 8 --definitely-benign
-
-# Categorize LR-M
-python cli.py categorize --size 25 --ahe --malignancy-not-hcc
-
-# JSON output
-python cli.py categorize --size 20 --ahe --washout --json
-
-# Show category info
-python cli.py info
-python cli.py info 5
+pytest -v
 ```
 
-## Python API
-
-```python
-from li_rads_liver_imaging_agent import LiverObservation, Modality, categorize
-
-obs = LiverObservation(
-    observation_id="obs_1",
-    size_mm=20,
-    modality=Modality.CT,
-    arterial_hyperenhancement=True,
-    non_peripheral_washout=True,
-    enhancing_capsule=True,
-)
-
-result = categorize(obs)
-print(f"Category: {result.category.value}")
-print(f"Treatment eligible: {result.treatment_eligible}")
-```
-
-## Testing
+Execute high-throughput batch simulation benchmarks:
 
 ```bash
-python -m pytest tests/ -v
+python simulator.py --tasks 1000 --concurrency 8
 ```
 
-## License
+---
 
-MIT License. See [LICENSE](LICENSE).
+## 🐳 Container Deployment
+
+```bash
+docker build -t li-rads-liver-imaging-agent .
+docker run -p 8000:8000 li-rads-liver-imaging-agent
+```
