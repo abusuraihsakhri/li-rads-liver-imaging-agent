@@ -323,3 +323,43 @@ def categorize(observation: LiverObservation) -> LIRADSResult:
         treatment_note="LR-2: routine surveillance.",
         notes=notes,
     )
+
+
+# ── Clinical Domain Engine ──────────────────────────────────────────────
+
+class ClinicalDomainEngine:
+    """Clinical evaluation engine for multi-agent audit system."""
+
+    @staticmethod
+    def evaluate_primary_index(primary_metric: float):
+        """Evaluate primary metric against clinical thresholds."""
+        if primary_metric > 20.0:
+            return {
+                "title": "Primary Metric Threshold Exceeded",
+                "finding": f"Primary metric value ({primary_metric:.1f}) exceeded standard clinical baseline (20.0).",
+                "recommendation": "Perform secondary cross-check and review calibration profile.",
+            }
+        return None
+
+    @staticmethod
+    def evaluate_secondary_kinetics(secondary_metric: float, is_stat: bool):
+        """Evaluate secondary kinetics against safety thresholds."""
+        if is_stat or secondary_metric > 12.0:
+            return {
+                "title": "Secondary Kinetics Alert",
+                "finding": f"Secondary parameter index ({secondary_metric:.1f}) triggered automated supervisory escalation (STAT={is_stat}).",
+                "recommendation": "Initiate mandatory closed-loop clinical notification protocol.",
+            }
+        return None
+
+    @staticmethod
+    def evaluate_biomarker_concordance(status_flag: str, biomarkers: dict):
+        """Evaluate biomarker concordance with clinical standards."""
+        status_upper = str(status_flag).upper()
+        if any(w in status_upper for w in ["DISCORDANT", "SUSPICIOUS", "ANOMALY", "MUTANT"]):
+            return {
+                "title": "Biomarker Discordance Detected",
+                "finding": f"Phenotypic discordance noted in status flag ({status_flag}).",
+                "recommendation": "Reconcile correlative findings with secondary confirmatory testing.",
+            }
+        return None
