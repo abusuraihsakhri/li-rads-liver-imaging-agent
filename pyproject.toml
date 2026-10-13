@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "li-rads-liver-imaging-engine"
 version = "2.0.0"
-description = "LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Engine"
+description = "Rule-based ACR CT/MRI LI-RADS v2018 educational decision aid with audit utilities"
 readme = "README.md"
 authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
 license = { text = "MIT" }
@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Medical Science Apps",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.9"
@@ -23,5 +23,12 @@ dependencies = []
 li-rads-liver-imaging-engine = "li_rads_liver_imaging_agent.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/abusuraihsakhri/li-rads-liver-imaging-engine"
-Repository = "https://github.com/abusuraihsakhri/li-rads-liver-imaging-engine.git"
+Homepage = "https://github.com/abusuraihsakhri/li-rads-liver-imaging-agent"
+Repository = "https://github.com/abusuraihsakhri/li-rads-liver-imaging-agent.git"
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110,<1", "uvicorn>=0.27,<1", "pydantic>=2,<3"]
+test = ["pytest>=8,<10", "httpx>=0.27,<1", "fastapi>=0.110,<1", "pydantic>=2,<3"]
+
+[tool.setuptools.packages.find]
+include = ["li_rads_liver_imaging_agent*", "agents*"]
