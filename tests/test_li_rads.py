@@ -21,7 +21,7 @@ class TestLR5:
                                non_peripheral_washout=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_5
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
     def test_lr4_15mm_ahe_capsule(self):
         """15mm + AHE + capsule alone = LR-4."""
@@ -57,7 +57,7 @@ class TestLR5:
                                threshold_growth=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_5
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
 
 # ── LR-4 (Probably HCC) Tests ──────────────────────────────────────
@@ -68,7 +68,7 @@ class TestLR4:
         obs = LiverObservation("O1", size_mm=15, arterial_hyperenhancement=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_3
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
     def test_lr4_25mm_ahe_only(self):
         """25mm + AHE only = LR-4."""
@@ -114,18 +114,18 @@ class TestLR3:
 # ── LR-2 (Probably Benign) Tests ───────────────────────────────────
 
 class TestLR2:
-    def test_lr2_small_no_features(self):
-        """<10mm without features = LR-2."""
+    def test_small_without_features_is_lr3(self):
+        """<10mm without features = LR-3 (diagnostic table)."""
         obs = LiverObservation("O1", size_mm=7)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_3
 
-    def test_lr2_5mm_no_features(self):
+    def test_5mm_without_features_is_lr3(self):
         obs = LiverObservation("O1", size_mm=5)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_3
 
-    def test_lr2_9mm_no_features(self):
+    def test_9mm_without_features_is_lr3(self):
         obs = LiverObservation("O1", size_mm=9)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_3
@@ -138,7 +138,7 @@ class TestLR1:
         obs = LiverObservation("O1", size_mm=15, is_definitely_benign=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_1
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
     def test_lr1_hemangioma(self):
         obs = LiverObservation("O1", size_mm=30, is_definitely_benign=True)
@@ -154,7 +154,7 @@ class TestLRM:
                                has_malignancy_not_hcc=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_M
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
     def test_lr_m_no_ahe(self):
         obs = LiverObservation("O1", size_mm=20, has_malignancy_not_hcc=True)
@@ -169,7 +169,7 @@ class TestLRTIV:
         obs = LiverObservation("O1", size_mm=40, has_tumor_in_vein=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_TIV
-        assert r.treatment_eligible is False
+        assert r.treatment_eligible is None
 
     def test_lr_tiv_with_ahe(self):
         obs = LiverObservation("O1", size_mm=35, arterial_hyperenhancement=True,
