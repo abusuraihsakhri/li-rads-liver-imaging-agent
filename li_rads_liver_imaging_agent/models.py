@@ -93,7 +93,7 @@ class LIRADSResult:
     major_features: Dict[str, bool] = field(default_factory=dict)
     ancillary_malignancy: List[str] = field(default_factory=list)
     ancillary_benignity: List[str] = field(default_factory=list)
-    treatment_eligible: bool = False
+    treatment_eligible: Optional[bool] = None  # Never inferred from imaging category alone
     treatment_note: str = ""
     notes: List[str] = field(default_factory=list)
 
