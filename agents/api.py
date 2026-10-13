@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from .base import AuditLogger, PHIGuard, SecurityException
 from .models import SystemTaskPayload, ConsensusDossier
 from .supervisor import SystemSupervisor
@@ -43,8 +43,8 @@ class ObservationRequest(BaseModel):
     is_definitely_benign: bool = False
     is_probably_benign: bool = False
     has_malignancy_not_hcc: bool = False
-    ancillary_favoring_malignancy: List[str] = []
-    ancillary_favoring_benignity: List[str] = []
+    ancillary_favoring_malignancy: List[str] = Field(default_factory=list)
+    ancillary_favoring_benignity: List[str] = Field(default_factory=list)
 
 
 _WEB_DIR = Path(__file__).resolve().parents[1] / "web"
