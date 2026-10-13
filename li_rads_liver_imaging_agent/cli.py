@@ -11,6 +11,19 @@ from .agents import LiverRADSCoordinator
 coordinator = LiverRADSCoordinator()
 
 
+def _parse_csv_bool(value):
+    """Parse a CSV boolean without treating the string 'False' as true."""
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes", "y", "on"):
+        return True
+    if text in ("0", "false", "no", "n", "off", ""):
+        return False
+    raise ValueError("Invalid CSV boolean: " + repr(value))
+
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="li-rads-liver-imaging-agent", description="LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -82,7 +95,7 @@ def main(argv=None):
                 primary_metric=float(r.get("metric_primary", r.get("primary_metric", 15.0))),
                 secondary_metric=float(r.get("metric_secondary", r.get("secondary_metric", 5.0))),
                 status_flag=r.get("status_flag", r.get("status_text", "NORMAL")),
-                is_stat=bool(r.get("is_stat", r.get("critical_flag", False))),
+                is_stat=_parse_csv_bool(r.get("is_stat", r.get("critical_flag", False))),
             )
             dossier = coordinator.process_case(case)
             row_dict = dict(r)
