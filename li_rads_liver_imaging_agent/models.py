@@ -63,17 +63,17 @@ class LiverObservation:
     def validate(self) -> List[str]:
         """Validate measured values and the population to which CT/MRI LI-RADS applies."""
         errors: List[str] = []
-        if not math.isfinite(self.size_mm) or self.size_mm <= 0:
+        if not isinstance(self.size_mm, (int, float)) or not math.isfinite(self.size_mm) or self.size_mm <= 0:
             errors.append("Size must be a finite positive number")
         if self.modality not in (Modality.CT, Modality.MRI):
             errors.append("CT/MRI LI-RADS cannot classify ultrasound observations")
         if not self.has_at_risk_liver:
             errors.append("CT/MRI LI-RADS requires an eligible high-risk population")
         if self.prior_size_mm is not None:
-            if not math.isfinite(self.prior_size_mm) or self.prior_size_mm <= 0:
+            if not isinstance(self.prior_size_mm, (int, float)) or not math.isfinite(self.prior_size_mm) or self.prior_size_mm <= 0:
                 errors.append("Prior size must be a finite positive number")
         if self.prior_months is not None:
-            if not math.isfinite(self.prior_months) or self.prior_months <= 0:
+            if not isinstance(self.prior_months, (int, float)) or not math.isfinite(self.prior_months) or self.prior_months <= 0:
                 errors.append("Prior interval must be a finite positive number of months")
         if (self.prior_size_mm is None) != (self.prior_months is None):
             errors.append("Prior size and interval must be supplied together")
