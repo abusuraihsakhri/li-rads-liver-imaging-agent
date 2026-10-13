@@ -32,8 +32,8 @@ class Severity(str):
 class DomainKnowledgeRegistry:
     """Enterprise domain rules, guideline matrices, and evidence benchmarks."""
     SYSTEM_VERSION = "2.0.0-PRO-CLINICAL"
-    ZERO_PHI_COMPLIANCE = True
-    HIPAA_SAFE_HARBOR = "ACTIVE_ON_PREMISES"
+    ZERO_PHI_COMPLIANCE = False  # Regex heuristics do not establish compliance
+    HIPAA_SAFE_HARBOR = "NOT_VERIFIED"
 
     @staticmethod
     def audit_security_and_integrity(payload: Dict[str, Any]) -> List[str]:
@@ -163,11 +163,11 @@ class LiverRADSCoordinator:
     def query_assistant(self, user_query: str) -> str:
         q = user_query.strip().lower()
         if "summary" in q or "status" in q:
-            return f"LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Agent currently tracking {len(self.case_registry)} cases in local air-gapped memory."
+            return f"LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Agent currently tracking {len(self.case_registry)} cases in process-local memory."
         elif "guidelines" in q or "protocol" in q:
-            return "All sub-agents operate under validated consensus clinical algorithms and CAP/CLSI/NCCN/WHO standards."
+            return "This demonstration uses generic thresholds, not validated clinical guideline algorithms."
         else:
-            return f"LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Agent executive agent online. Continuous supervisory monitoring active across all domain parameters."
+            return f"LiverRADS Sentinel: CT/MRI LI-RADS Hepatocellular Carcinoma Diagnostic Agent executive agent online. A demonstration-only supervisor is available for local testing."
 
 
 coordinator = LiverRADSCoordinator()

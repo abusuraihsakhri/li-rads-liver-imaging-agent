@@ -8,3 +8,12 @@ output.csv
 dist/
 build/
 *.egg-info/
+
+.env
+.env.*
+!.env.example
+.venv/
+.coverage
+htmlcov/
+.ruff_cache/
+node_modules/

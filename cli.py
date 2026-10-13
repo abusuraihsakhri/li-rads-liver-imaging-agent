@@ -18,7 +18,7 @@ def main(argv=None):
     # categorize command
     p_cat = subparsers.add_parser("categorize", help="Categorize a liver observation")
     p_cat.add_argument("--size", type=float, required=True, help="Observation size in mm")
-    p_cat.add_argument("--modality", choices=["CT", "MRI", "US"], default="CT", help="Imaging modality")
+    p_cat.add_argument("--modality", choices=["CT", "MRI"], default="CT", help="Imaging modality")
     p_cat.add_argument("--ahe", action="store_true", help="Arterial hyperenhancement present")
     p_cat.add_argument("--washout", action="store_true", help="Non-peripheral washout present")
     p_cat.add_argument("--capsule", action="store_true", help="Enhancing capsule present")
@@ -27,6 +27,8 @@ def main(argv=None):
     p_cat.add_argument("--prior-months", type=float, default=None, help="Months since prior scan")
     p_cat.add_argument("--tumor-in-vein", action="store_true", help="Tumor in vein present")
     p_cat.add_argument("--definitely-benign", action="store_true", help="Observation is definitely benign")
+    p_cat.add_argument("--probably-benign", action="store_true", help="Observation is probably benign")
+    p_cat.add_argument("--inadequate-imaging", action="store_true", help="Missing or degraded necessary imaging; LR-NC")
     p_cat.add_argument("--malignancy-not-hcc", action="store_true", help="Features suggest malignancy not HCC")
     p_cat.add_argument("--no-risk-liver", action="store_true", help="No at-risk liver factors")
     p_cat.add_argument("--json", action="store_true", help="Output as JSON")
@@ -51,10 +53,16 @@ def main(argv=None):
             prior_months=args.prior_months,
             has_tumor_in_vein=args.tumor_in_vein,
             is_definitely_benign=args.definitely_benign,
+            is_probably_benign=args.probably_benign,
+            is_imaging_adequate=not args.inadequate_imaging,
             has_malignancy_not_hcc=args.malignancy_not_hcc,
             has_at_risk_liver=not args.no_risk_liver,
         )
-        result = categorize(obs)
+        try:
+            result = categorize(obs)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
         else:
@@ -65,7 +73,7 @@ def main(argv=None):
             print(f"  Size:         {result.size_mm}mm")
             print(f"  Description:  {result.description}")
             print(f"  Treatment:    {result.treatment_note}")
-            print(f"  Eligible:     {'Yes' if result.treatment_eligible else 'No'}")
+            print(f"  Eligibility:  Not assessed by LI-RADS categorization")
             print(f"\n  Major Features:")
             for feat, present in result.major_features.items():
                 status = "YES" if present else "no"

@@ -1,6 +1,6 @@
 """
-Supervisor Orchestrator & Operations Intelligence for Li Rads Liver Imaging Agent.
-Domain: Radiology & Neuroimaging Systems
+Demonstration supervisor for generic operational threshold checks.
+These generic thresholds are not CT/MRI LI-RADS categorization rules.
 """
 import uuid
 from typing import Dict, Any, List, Optional
@@ -75,5 +75,5 @@ class SystemSupervisor:
 
     def query_supervisory_chat(self, query: str) -> str:
         PHIGuard.assert_no_phi(query)
-        prompt = f"Supervisor inquiry for Li Rads Liver Imaging Agent under ACR RADS / Fleischner Society / ASPECTS Guidelines: {query}"
+        prompt = f"Illustrative supervisory demo inquiry: {query}"
         return self.llm.invoke(prompt)

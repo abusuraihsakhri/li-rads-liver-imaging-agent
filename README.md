@@ -1,144 +1,102 @@
-# Li Rads Liver Imaging Agent
+# CT/MRI LI-RADS v2018 Liver Imaging Decision Aid
 
-> **Domain:** Diagnostic Radiology & Medical Imaging AI
-> **Reference Guidelines & Standards:** `American College of Radiology (ACR) LI-RADS v2018 & Fleischner Society`
+An educational decision aid for categorizing **untreated hepatic observations** using the American College of Radiology (ACR) CT/MRI LI-RADS v2018 diagnostic table. Rules are implemented in Python and in a standalone JavaScript browser application.
 
-<div align="center">
+> **Clinical scope:** Use CT/MRI LI-RADS only for eligible HCC high-risk populations with adequate multiphase CT/MRI. This is not a validated medical device. Treated or path-proven observations need a different pathway. Diagnosis, treatment, and transplant eligibility require clinical and radiologist assessment.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+**Reference:** [ACR CT/MRI LI-RADS v2018 Core](https://cs.acr.org/-/media/ACR/NOINDEX/RADS/LI-RADS-2018-Core.pdf), diagnostic algorithm and ancillary features (pages 8–10).
 
-</div>
+## Features
 
----
+- LR-NC, LR-1, LR-2, LR-3, LR-4, LR-5, LR-M and LR-TIV categories.
+- Size, nonrim arterial enhancement, nonperipheral washout, enhancing capsule, and threshold growth (≥50% in ≤6 months).
+- Optional one-level ancillary adjustments, never upgrading to LR-5.
+- Validations for measurements, modality, risk population, and prior imaging.
+- Browser-based categorization and JSON export without a backend, external API or persistent browser storage.
+- Python CLI, optional FastAPI service, and a separate illustrative audit subsystem.
 
-## What It Does
+## Use in the browser
 
-**Li Rads Liver Imaging Agent** is a clinical decision support tool implementing ACR LI-RADS v2018 criteria for categorizing liver observations in patients at risk for hepatocellular carcinoma (HCC). It provides:
+Open **web/index.html** in a modern browser or run:
 
-- **LI-RADS v2018 Categorization** — Automated scoring of liver observations (LR-NC, LR-1 through LR-5, LR-M, LR-TIV)
-- **Multi-Agent Audit System** — Distributed clinical surveillance with PHI protection
-- **FastAPI REST API** — OpenAPI endpoints for integration with clinical workflows
-- **HMAC-SHA256 Audit Trail** — Tamper-evident cryptographic logging
+~~~bash
+python -m http.server 8080 --directory web
+~~~
 
----
+Visit http://127.0.0.1:8080/, enter observation features, and select **Categorize observation**. Data stay in the browser. Python, Pyodide, and server-side processing are not required.
 
-## Quickstart
+## Python CLI
 
-### Installation
+Requires Python 3.9 or later.
 
-```bash
-pip install -e .
-```
-
-### CLI Usage
-
-**Categorize a liver observation:**
-```bash
-python cli.py categorize --size 20 --modality CT --ahe --washout
-```
-
-**Get category information:**
-```bash
-python cli.py info
+~~~bash
+python cli.py categorize --size 15 --modality CT --ahe --capsule
+python cli.py categorize --size 15 --ahe --washout --json
+python cli.py categorize --size 12 --inadequate-imaging
 python cli.py info 5
-```
+~~~
 
-**JSON output:**
-```bash
-python cli.py categorize --size 15 --ahe --capsule --json
-```
+The first example assigns **LR-4** (15 mm, APHE and capsule alone); the second assigns **LR-5** (15 mm, APHE and washout). Invalid or noneligible observations result in errors instead of a category.
 
-### Parameters
+~~~python
+from li_rads_liver_imaging_agent import LiverObservation, categorize
 
-| Parameter | Type | Description |
-|:----------|:-----|:------------|
-| `--size` | float | Observation size in mm (required) |
-| `--modality` | CT/MRI/US | Imaging modality (default: CT) |
-| `--ahe` | flag | Arterial hyperenhancement present |
-| `--washout` | flag | Non-peripheral washout present |
-| `--capsule` | flag | Enhancing capsule present |
-| `--growth` | flag | Threshold growth (>=50% in <=6 months) |
-| `--prior-size` | float | Prior observation size in mm |
-| `--prior-months` | float | Months since prior scan |
-| `--tumor-in-vein` | flag | Tumor in vein present |
-| `--definitely-benign` | flag | Observation is definitely benign |
-| `--malignancy-not-hcc` | flag | Features suggest malignancy not HCC |
+observation = LiverObservation(
+    observation_id="OBS-1",
+    size_mm=15,
+    arterial_hyperenhancement=True,
+    enhancing_capsule=True,
+)
+print(categorize(observation).to_dict()["category"])  # LR-4
+~~~
 
----
+## Optional Python API
 
-## LI-RADS Categories
+~~~bash
+python -m pip install -e ".[server,test]"
+uvicorn agents.api:app --host 127.0.0.1 --port 8000
+~~~
 
-| Category | Description | Treatment Eligible |
-|:---------|:------------|:-------------------|
-| LR-NC | Not categorizable | No |
-| LR-1 | Definitely benign | No |
-| LR-2 | Probably benign | No |
-| LR-3 | Intermediate probability | No |
-| LR-4 | Probably HCC | Case-by-case |
-| LR-5 | Definitely HCC | Yes |
-| LR-M | Probably malignancy (not HCC) | No |
-| LR-TIV | Tumor in vein | Yes |
+The browser UI is served at http://127.0.0.1:8000/. REST routes:
 
----
+| Endpoint | Description |
+| --- | --- |
+| GET /health | Basic service health |
+| POST /api/categorize | LI-RADS v2018 categorization from JSON |
+| POST /api/audit | Demonstration-only multi-worker threshold audit |
+| POST /api/chat | Deterministic mock response, not a medical language model |
+| GET /metrics | In-memory audit metrics |
+| GET /api/audit/logs | HMAC audit chain; requires AUDIT_READ_TOKEN and X-Audit-Token header |
 
-## Architecture
+~~~bash
+curl -fsS http://127.0.0.1:8000/api/categorize \
+  -H 'Content-Type: application/json' \
+  -d '{"observation_id":"OBS-1","size_mm":15,"arterial_hyperenhancement":true,"enhancing_capsule":true}'
+~~~
 
-### Core Modules
+**The separate generic audit workers are illustrative**, not validated clinical LI-RADS assessment rules or laboratory thresholds.
 
-- **`li_rads_liver_imaging_agent/engine.py`** — LI-RADS v2018 categorization algorithm
-- **`li_rads_liver_imaging_agent/models.py`** — Data models (LiverObservation, LIRADSResult)
-- **`agents/supervisor.py`** — Multi-agent orchestration system
-- **`agents/base.py`** — PHI guard, HMAC-SHA256 audit trail, security utilities
+## Docker and privacy
 
-### Security Features
+~~~bash
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose up --build
+~~~
 
-- **Zero-PHI Outbound Guard:** AST and regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers
-- **HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
-- **Configurable Secret Key:** Set `AUDIT_SECRET_KEY` environment variable for production deployments
+Docker Compose binds port 8000 to localhost. Configure HTTPS and authentication before exposing the API publicly.
 
-### FastAPI Server
+**Privacy:** The standalone browser app does not transmit or persist observation inputs. The Python audit service stores dossiers and an HMAC-signed log in process memory only. The audit chain does not survive restarts or constitute regulatory validation. Its regex-based identifier screening cannot guarantee removal of all PHI. Use only synthetic or de-identified inputs. The default mock subsystem makes no external LLM requests.
 
-```bash
-python li_rads_liver_imaging_agent/cli.py serve --host 127.0.0.1 --port 8000
-```
+## Tests
 
-Endpoints:
-- `GET /health` — Health check
-- `POST /api/audit` — Submit case for audit
-- `POST /api/chat` — Query clinical assistant
+~~~bash
+python -m pip install -e ".[test]"
+python -m pytest -q
+node --test web/li-rads.test.mjs
+~~~
 
----
-
-## Testing
-
-Run the full test suite:
-
-```bash
-pytest -v
-```
-
-Run with coverage:
-
-```bash
-pytest -v --cov=li_rads_liver_imaging_agent --cov=agents
-```
-
----
-
-## Docker Deployment
-
-```bash
-docker build -t li-rads-liver-imaging-agent .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-secret-key li-rads-liver-imaging-agent
-```
-
----
+CI covers Python 3.10–3.12 and Node.js 22. The browser app uses standard JavaScript ES modules.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+[MIT](LICENSE).

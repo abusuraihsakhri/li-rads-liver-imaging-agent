@@ -14,16 +14,10 @@ Categories:
   LR-M: Probably malignancy, not necessarily HCC
   LR-TIV: Tumor in vein
 
-LR-5 criteria (>=10mm):
-  - Arterial hyperenhancement AND
-  - One or more: non-peripheral washout, threshold growth, enhancing capsule
+LR-5 criteria and all other category decisions follow the ACR CT/MRI diagnostic table.
+These results are for decision support and do not establish treatment eligibility.
 
-Treatment eligibility:
-  - LR-5: Eligible for HCC treatment without biopsy
-  - LR-TIV: Eligible for HCC treatment
-  - LR-4: May be eligible depending on institutional policy
-
-Reference: ACR LI-RADS v2018
+Reference: ACR CT/MRI LI-RADS v2018, diagnostic algorithm page 8.
 """
 from typing import List, Dict, Any
 from .models import LiverObservation, LIRADSCategory, LIRADSResult, Modality
@@ -79,248 +73,92 @@ def _check_threshold_growth(obs: LiverObservation) -> bool:
 
 
 def categorize(observation: LiverObservation) -> LIRADSResult:
-    """
-    Categorize a liver observation using LI-RADS v2018 criteria.
+    """Categorize an untreated CT/MRI observation using ACR LI-RADS v2018.
 
-    Decision logic:
-    1. Check for special categories first (LR-NC, LR-TIV, LR-M, LR-1)
-    2. Apply size-based criteria for LR-5
-    3. Apply major feature combinations for LR-4, LR-3, LR-2
+    The major-feature lookup follows the ACR diagnostic table; ancillary features
+    can adjust the result by one category, but can never upgrade to LR-5.
+    This decision aid is not a treatment-eligibility determination.
     """
     errors = observation.validate()
     if errors:
-        raise ValueError(f"Invalid observation: {'; '.join(errors)}")
+        raise ValueError("Invalid observation: " + "; ".join(errors))
 
-    notes: List[str] = []
-    has_growth = _check_threshold_growth(observation)
-
+    growth = _check_threshold_growth(observation)
     major_features = {
         "arterial_hyperenhancement": observation.arterial_hyperenhancement,
         "non_peripheral_washout": observation.non_peripheral_washout,
         "enhancing_capsule": observation.enhancing_capsule,
-        "threshold_growth": has_growth,
+        "threshold_growth": growth,
     }
-
-    # ── Special categories ──────────────────────────────────────────
-
-    # LR-NC: Not categorizable
-    if not observation.has_at_risk_liver:
-        notes.append("Observation in liver without known risk factors; LI-RADS may not apply.")
-        # Still categorize but note the caveat
-
-    # LR-TIV: Tumor in vein
-    if observation.has_tumor_in_vein:
-        info = CATEGORY_INFO[LIRADSCategory.LR_TIV]
-        return LIRADSResult(
-            observation_id=observation.observation_id,
-            category=LIRADSCategory.LR_TIV,
-            category_label=info["label"],
-            description=info["description"],
-            size_mm=observation.size_mm,
-            major_features=major_features,
-            ancillary_malignancy=observation.ancillary_favoring_malignancy,
-            ancillary_benignity=observation.ancillary_favoring_benignity,
-            treatment_eligible=True,
-            treatment_note="Tumor-in-vein: eligible for HCC treatment.",
-            notes=notes,
-        )
-
-    # LR-1: Definitely benign
-    if observation.is_definitely_benign:
-        info = CATEGORY_INFO[LIRADSCategory.LR_1]
-        return LIRADSResult(
-            observation_id=observation.observation_id,
-            category=LIRADSCategory.LR_1,
-            category_label=info["label"],
-            description=info["description"],
-            size_mm=observation.size_mm,
-            major_features=major_features,
-            ancillary_malignancy=observation.ancillary_favoring_malignancy,
-            ancillary_benignity=observation.ancillary_favoring_benignity,
-            treatment_eligible=False,
-            treatment_note="Benign: no treatment needed.",
-            notes=notes,
-        )
-
-    # LR-M: Probably malignancy, not HCC-specific
-    if observation.has_malignancy_not_hcc:
-        info = CATEGORY_INFO[LIRADSCategory.LR_M]
-        return LIRADSResult(
-            observation_id=observation.observation_id,
-            category=LIRADSCategory.LR_M,
-            category_label=info["label"],
-            description=info["description"],
-            size_mm=observation.size_mm,
-            major_features=major_features,
-            ancillary_malignancy=observation.ancillary_favoring_malignancy,
-            ancillary_benignity=observation.ancillary_favoring_benignity,
-            treatment_eligible=False,
-            treatment_note="LR-M: tissue sampling recommended for diagnosis.",
-            notes=notes,
-        )
-
-    # ── Size-based HCC criteria ─────────────────────────────────────
-
-    ahe = observation.arterial_hyperenhancement
-    washout = observation.non_peripheral_washout
-    capsule = observation.enhancing_capsule
+    notes: List[str] = []
     size = observation.size_mm
+    count = sum((observation.non_peripheral_washout, observation.enhancing_capsule, growth))
+    ahe = observation.arterial_hyperenhancement
 
-    # Count major features (excluding arterial hyperenhancement which is required)
-    ancillary_mal = observation.ancillary_favoring_malignancy
-    ancillary_ben = observation.ancillary_favoring_benignity
-
-    # LR-5: >=10mm with AHE AND (washout OR growth OR capsule)
-    if size >= 10 and ahe:
-        ancillary_features_present = washout or has_growth or capsule
-        if ancillary_features_present:
-            # LR-5 criteria met
-            # Additional conditions for LR-5 depending on size
-            if size >= 10 and size < 20:
-                # 10-19mm: need AHE + (washout OR growth OR capsule)
-                info = CATEGORY_INFO[LIRADSCategory.LR_5]
-                return LIRADSResult(
-                    observation_id=observation.observation_id,
-                    category=LIRADSCategory.LR_5,
-                    category_label=info["label"],
-                    description=info["description"],
-                    size_mm=size,
-                    major_features=major_features,
-                    ancillary_malignancy=ancillary_mal,
-                    ancillary_benignity=ancillary_ben,
-                    treatment_eligible=True,
-                    treatment_note="LR-5: eligible for HCC treatment without biopsy.",
-                    notes=notes,
-                )
-            elif size >= 20:
-                # >=20mm: AHE + (washout OR growth OR capsule) = LR-5
-                info = CATEGORY_INFO[LIRADSCategory.LR_5]
-                return LIRADSResult(
-                    observation_id=observation.observation_id,
-                    category=LIRADSCategory.LR_5,
-                    category_label=info["label"],
-                    description=info["description"],
-                    size_mm=size,
-                    major_features=major_features,
-                    ancillary_malignancy=ancillary_mal,
-                    ancillary_benignity=ancillary_ben,
-                    treatment_eligible=True,
-                    treatment_note="LR-5: eligible for HCC treatment without biopsy.",
-                    notes=notes,
-                )
-
-    # LR-4: >=10mm with AHE but NO washout/growth/capsule
-    # OR 10-19mm with AHE + washout but not meeting LR-5
-    # OR >=20mm with AHE only (no washout/growth/capsule)
-    if size >= 10 and ahe and not (washout or has_growth or capsule):
-        # AHE alone for >=20mm or AHE without other features for 10-19mm
-        if size >= 20:
-            info = CATEGORY_INFO[LIRADSCategory.LR_4]
-            return LIRADSResult(
-                observation_id=observation.observation_id,
-                category=LIRADSCategory.LR_4,
-                category_label=info["label"],
-                description=info["description"],
-                size_mm=size,
-                major_features=major_features,
-                ancillary_malignancy=ancillary_mal,
-                ancillary_benignity=ancillary_ben,
-                treatment_eligible=False,
-                treatment_note="LR-4: consider biopsy or short-interval follow-up.",
-                notes=notes + ["AHE without washout/capsule/growth in >=20mm observation."],
-            )
+    # Apply special categories before the CT/MRI diagnostic table.
+    special = True
+    if not observation.is_imaging_adequate:
+        category = LIRADSCategory.LR_NC
+        notes.append("Required imaging information is inadequate.")
+    elif observation.has_tumor_in_vein:
+        category = LIRADSCategory.LR_TIV
+        notes.append("LR-TIV is not synonymous with HCC; determine etiology clinically.")
+    elif observation.is_definitely_benign:
+        category = LIRADSCategory.LR_1
+    elif observation.is_probably_benign:
+        category = LIRADSCategory.LR_2
+    elif observation.has_malignancy_not_hcc:
+        category = LIRADSCategory.LR_M
+        notes.append("LR-M may include non-HCC malignancy or atypical HCC.")
+    else:
+        special = False
+        if not ahe:
+            if size < 20:
+                category = LIRADSCategory.LR_4 if count >= 2 else LIRADSCategory.LR_3
+            else:
+                category = LIRADSCategory.LR_4 if count >= 1 else LIRADSCategory.LR_3
+        elif size < 10:
+            category = LIRADSCategory.LR_4 if count >= 1 else LIRADSCategory.LR_3
+        elif size < 20:
+            if count == 0:
+                category = LIRADSCategory.LR_3
+            elif count >= 2 or observation.non_peripheral_washout or growth:
+                category = LIRADSCategory.LR_5
+            else:
+                category = LIRADSCategory.LR_4  # Capsule alone
         else:
-            # 10-19mm with AHE only
-            info = CATEGORY_INFO[LIRADSCategory.LR_4]
-            return LIRADSResult(
-                observation_id=observation.observation_id,
-                category=LIRADSCategory.LR_4,
-                category_label=info["label"],
-                description=info["description"],
-                size_mm=size,
-                major_features=major_features,
-                ancillary_malignancy=ancillary_mal,
-                ancillary_benignity=ancillary_ben,
-                treatment_eligible=False,
-                treatment_note="LR-4: consider biopsy or short-interval follow-up.",
-                notes=notes,
-            )
+            category = LIRADSCategory.LR_5 if count >= 1 else LIRADSCategory.LR_4
 
-    # LR-4: 10-19mm with washout but no AHE (per some interpretations)
-    # Actually in LI-RADS, AHE is required for LR-4/5. Without AHE:
-    # <10mm: LR-2 or LR-3
-    # >=10mm without AHE: LR-3
+    # ACR v2018 optional ancillary adjustment (maximum one category).
+    # Special categories are retained rather than being adjusted.
+    if not special:
+        mal = bool(observation.ancillary_favoring_malignancy)
+        ben = bool(observation.ancillary_favoring_benignity)
+        order = [LIRADSCategory.LR_1, LIRADSCategory.LR_2,
+                 LIRADSCategory.LR_3, LIRADSCategory.LR_4, LIRADSCategory.LR_5]
+        if mal and not ben and category in (LIRADSCategory.LR_2, LIRADSCategory.LR_3):
+            category = order[order.index(category) + 1]
+            notes.append("Upgraded one category using ancillary features; maximum LR-4.")
+        elif ben and not mal and category in (LIRADSCategory.LR_3, LIRADSCategory.LR_4,
+                                              LIRADSCategory.LR_5):
+            category = order[order.index(category) - 1]
+            notes.append("Downgraded one category using ancillary features.")
+        elif mal and ben:
+            notes.append("Opposing ancillary features: no category adjustment.")
 
-    # Observations with some features but not meeting higher criteria
-    if size >= 10:
-        if washout or has_growth or capsule:
-            # Has some features but missing AHE -> LR-3
-            info = CATEGORY_INFO[LIRADSCategory.LR_3]
-            return LIRADSResult(
-                observation_id=observation.observation_id,
-                category=LIRADSCategory.LR_3,
-                category_label=info["label"],
-                description=info["description"],
-                size_mm=size,
-                major_features=major_features,
-                ancillary_malignancy=ancillary_mal,
-                ancillary_benignity=ancillary_ben,
-                treatment_eligible=False,
-                treatment_note="LR-3: follow-up imaging recommended.",
-                notes=notes + ["Features present but AHE absent; does not meet LR-4/5 criteria."],
-            )
-        else:
-            # >=10mm with no features -> LR-3
-            info = CATEGORY_INFO[LIRADSCategory.LR_3]
-            return LIRADSResult(
-                observation_id=observation.observation_id,
-                category=LIRADSCategory.LR_3,
-                category_label=info["label"],
-                description=info["description"],
-                size_mm=size,
-                major_features=major_features,
-                ancillary_malignancy=ancillary_mal,
-                ancillary_benignity=ancillary_ben,
-                treatment_eligible=False,
-                treatment_note="LR-3: follow-up imaging recommended.",
-                notes=notes,
-            )
-
-    # <10mm observations
-    if size >= 10:
-        # Should have been caught above
-        pass
-
-    # <10mm with features
-    if ahe or washout or has_growth or capsule:
-        info = CATEGORY_INFO[LIRADSCategory.LR_3]
-        return LIRADSResult(
-            observation_id=observation.observation_id,
-            category=LIRADSCategory.LR_3,
-            category_label=info["label"],
-            description=info["description"],
-            size_mm=size,
-            major_features=major_features,
-            ancillary_malignancy=ancillary_mal,
-            ancillary_benignity=ancillary_ben,
-            treatment_eligible=False,
-            treatment_note="LR-3: follow-up imaging recommended.",
-            notes=notes,
-        )
-
-    # <10mm without features -> LR-2
-    info = CATEGORY_INFO[LIRADSCategory.LR_2]
+    info = CATEGORY_INFO[category]
+    notes.append("CT/MRI LI-RADS v2018 classification requires radiologist review and eligible clinical context.")
     return LIRADSResult(
         observation_id=observation.observation_id,
-        category=LIRADSCategory.LR_2,
+        category=category,
         category_label=info["label"],
         description=info["description"],
         size_mm=size,
         major_features=major_features,
-        ancillary_malignancy=ancillary_mal,
-        ancillary_benignity=ancillary_ben,
-        treatment_eligible=False,
-        treatment_note="LR-2: routine surveillance.",
+        ancillary_malignancy=observation.ancillary_favoring_malignancy,
+        ancillary_benignity=observation.ancillary_favoring_benignity,
+        treatment_eligible=None,
+        treatment_note="Imaging category does not independently determine treatment or transplant eligibility.",
         notes=notes,
     )
 
