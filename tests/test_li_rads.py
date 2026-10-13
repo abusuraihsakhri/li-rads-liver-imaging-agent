@@ -21,14 +21,14 @@ class TestLR5:
                                non_peripheral_washout=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_5
-        assert r.treatment_eligible is True
+        assert r.treatment_eligible is False
 
-    def test_lr5_15mm_ahe_capsule(self):
-        """15mm + AHE + capsule = LR-5."""
+    def test_lr4_15mm_ahe_capsule(self):
+        """15mm + AHE + capsule alone = LR-4."""
         obs = LiverObservation("O1", size_mm=15, arterial_hyperenhancement=True,
                                enhancing_capsule=True)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_5
+        assert r.category == LIRADSCategory.LR_4
 
     def test_lr5_20mm_ahe_growth(self):
         """20mm + AHE + threshold growth = LR-5."""
@@ -57,17 +57,17 @@ class TestLR5:
                                threshold_growth=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_5
-        assert r.treatment_eligible is True
+        assert r.treatment_eligible is False
 
 
 # ── LR-4 (Probably HCC) Tests ──────────────────────────────────────
 
 class TestLR4:
     def test_lr4_15mm_ahe_only(self):
-        """15mm + AHE only (no washout/capsule/growth) = LR-4."""
+        """15mm + AHE alone = LR-3."""
         obs = LiverObservation("O1", size_mm=15, arterial_hyperenhancement=True)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_4
+        assert r.category == LIRADSCategory.LR_3
         assert r.treatment_eligible is False
 
     def test_lr4_25mm_ahe_only(self):
@@ -77,10 +77,10 @@ class TestLR4:
         assert r.category == LIRADSCategory.LR_4
 
     def test_lr4_10mm_ahe_only(self):
-        """10mm + AHE only = LR-4."""
+        """10mm + AHE alone = LR-3."""
         obs = LiverObservation("O1", size_mm=10, arterial_hyperenhancement=True)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_4
+        assert r.category == LIRADSCategory.LR_3
 
 
 # ── LR-3 (Intermediate) Tests ──────────────────────────────────────
@@ -118,17 +118,17 @@ class TestLR2:
         """<10mm without features = LR-2."""
         obs = LiverObservation("O1", size_mm=7)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_2
+        assert r.category == LIRADSCategory.LR_3
 
     def test_lr2_5mm_no_features(self):
         obs = LiverObservation("O1", size_mm=5)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_2
+        assert r.category == LIRADSCategory.LR_3
 
     def test_lr2_9mm_no_features(self):
         obs = LiverObservation("O1", size_mm=9)
         r = categorize(obs)
-        assert r.category == LIRADSCategory.LR_2
+        assert r.category == LIRADSCategory.LR_3
 
 
 # ── LR-1 (Definitely Benign) Tests ─────────────────────────────────
@@ -169,7 +169,7 @@ class TestLRTIV:
         obs = LiverObservation("O1", size_mm=40, has_tumor_in_vein=True)
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_TIV
-        assert r.treatment_eligible is True
+        assert r.treatment_eligible is False
 
     def test_lr_tiv_with_ahe(self):
         obs = LiverObservation("O1", size_mm=35, arterial_hyperenhancement=True,
@@ -252,3 +252,61 @@ class TestCLI:
         assert ret == 0
         out = capsys.readouterr().out
         assert "Definitely HCC" in out
+
+# ACR CT/MRI LI-RADS v2018 diagnostic table: size and feature-count boundaries.
+@pytest.mark.parametrize("size,ahe,washout,capsule,growth,expected", [
+    (5, False, False, False, False, LIRADSCategory.LR_3),
+    (5, True, False, False, False, LIRADSCategory.LR_3),
+    (5, True, True, False, False, LIRADSCategory.LR_4),
+    (9.99, False, True, True, False, LIRADSCategory.LR_4),
+    (10, False, True, True, False, LIRADSCategory.LR_4),
+    (19.99, False, True, False, False, LIRADSCategory.LR_3),
+    (19.99, True, False, True, False, LIRADSCategory.LR_4),
+    (19.99, True, True, False, False, LIRADSCategory.LR_5),
+    (19.99, True, False, False, True, LIRADSCategory.LR_5),
+    (20, False, False, True, False, LIRADSCategory.LR_4),
+    (20, True, False, False, False, LIRADSCategory.LR_4),
+    (20, True, False, True, False, LIRADSCategory.LR_5),
+])
+def test_acr_v2018_decision_table(size, ahe, washout, capsule, growth, expected):
+    obs = LiverObservation("TABLE", size_mm=size, arterial_hyperenhancement=ahe,
+                           non_peripheral_washout=washout, enhancing_capsule=capsule,
+                           threshold_growth=growth)
+    assert categorize(obs).category == expected
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"size_mm": float("nan")},
+    {"size_mm": float("inf")},
+    {"size_mm": -1},
+    {"size_mm": 10, "modality": Modality.US},
+    {"size_mm": 10, "has_at_risk_liver": False},
+    {"size_mm": 10, "prior_months": 0, "prior_size_mm": 5},
+    {"size_mm": 10, "prior_months": 2},
+])
+def test_rejects_invalid_observation(kwargs):
+    with pytest.raises(ValueError):
+        categorize(LiverObservation("INVALID", **kwargs))
+
+
+def test_inadequate_imaging_is_lr_nc():
+    assert categorize(LiverObservation("X", 10, is_imaging_adequate=False)).category == LIRADSCategory.LR_NC
+
+
+def test_probably_benign_is_explicit_not_assumed_from_small_size():
+    assert categorize(LiverObservation("X", 8, is_probably_benign=True)).category == LIRADSCategory.LR_2
+
+
+def test_ancillary_features_adjust_at_most_one_category():
+    base = LiverObservation("X", 15, arterial_hyperenhancement=True)
+    assert categorize(base).category == LIRADSCategory.LR_3
+    base.ancillary_favoring_malignancy = ["restricted diffusion"]
+    assert categorize(base).category == LIRADSCategory.LR_4
+    base.ancillary_favoring_benignity = ["size stability"]
+    assert categorize(base).category == LIRADSCategory.LR_3
+
+
+def test_ancillary_features_cannot_create_lr5():
+    obs = LiverObservation("X", 15, arterial_hyperenhancement=True,
+                           enhancing_capsule=True, ancillary_favoring_malignancy=["restricted diffusion"])
+    assert categorize(obs).category == LIRADSCategory.LR_4
