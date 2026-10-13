@@ -73,7 +73,7 @@ def main(argv=None):
             print(f"  Size:         {result.size_mm}mm")
             print(f"  Description:  {result.description}")
             print(f"  Treatment:    {result.treatment_note}")
-            print(f"  Eligible:     {'Yes' if result.treatment_eligible else 'No'}")
+            print(f"  Eligibility:  Not assessed by LI-RADS categorization")
             print(f"\n  Major Features:")
             for feat, present in result.major_features.items():
                 status = "YES" if present else "no"
