@@ -63,3 +63,18 @@ def test_supervisor_consensus_and_audit():
     assert main(["audit", "--case-id", "CLI-TEST-01"]) == 0
     assert main(["chat", "Explain", "specifications"]) == 0
     assert main(["batch", "-i", "sample.csv"]) == 0
+
+def test_batch_boolean_false_is_not_stat(tmp_path):
+    import csv
+    source = tmp_path / "cases.csv"
+    target = tmp_path / "results.csv"
+    source.write_text(
+        "case_id,metric_primary,metric_secondary,is_stat,status_flag\\n"
+        "NO-STAT,10,2,False,NORMAL\\n"
+        "YES-STAT,10,2,True,NORMAL\\n", encoding="utf-8"
+    )
+    assert main(["batch", "-i", str(source), "-o", str(target)]) == 0
+    with target.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    assert rows[0]["overall_status"] == "CONCORDANT_NORMAL"
+    assert rows[1]["overall_status"] == "CRITICAL_ACTION_REQUIRED"
