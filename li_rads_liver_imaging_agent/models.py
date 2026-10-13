@@ -2,6 +2,7 @@
 Data models for LI-RADS (Liver Imaging Reporting and Data System).
 Standard: ACR LI-RADS v2018
 """
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -45,6 +46,7 @@ class LiverObservation:
     # Special features
     has_tumor_in_vein: bool = False
     is_definitely_benign: bool = False  # e.g., cyst, hemangioma with classic features
+    is_probably_benign: bool = False
     has_malignancy_not_hcc: bool = False  # features suggesting cholangiocarcinoma, etc.
 
     # Prior imaging
@@ -52,17 +54,31 @@ class LiverObservation:
     prior_months: Optional[float] = None  # months since prior scan
 
     # At-risk liver
-    has_at_risk_liver: bool = True  # cirrhosis, chronic HBV, etc.
+    has_at_risk_liver: bool = True  # eligibility must be confirmed clinically
+    is_imaging_adequate: bool = True  # if False, assign LR-NC
 
     location: str = ""
     notes: str = ""
 
     def validate(self) -> List[str]:
-        errors = []
-        if self.size_mm <= 0:
-            errors.append(f"Size must be positive, got {self.size_mm}")
-        if self.prior_size_mm is not None and self.prior_size_mm <= 0:
-            errors.append(f"Prior size must be positive, got {self.prior_size_mm}")
+        """Validate measured values and the population to which CT/MRI LI-RADS applies."""
+        errors: List[str] = []
+        if not math.isfinite(self.size_mm) or self.size_mm <= 0:
+            errors.append("Size must be a finite positive number")
+        if self.modality not in (Modality.CT, Modality.MRI):
+            errors.append("CT/MRI LI-RADS cannot classify ultrasound observations")
+        if not self.has_at_risk_liver:
+            errors.append("CT/MRI LI-RADS requires an eligible high-risk population")
+        if self.prior_size_mm is not None:
+            if not math.isfinite(self.prior_size_mm) or self.prior_size_mm <= 0:
+                errors.append("Prior size must be a finite positive number")
+        if self.prior_months is not None:
+            if not math.isfinite(self.prior_months) or self.prior_months <= 0:
+                errors.append("Prior interval must be a finite positive number of months")
+        if (self.prior_size_mm is None) != (self.prior_months is None):
+            errors.append("Prior size and interval must be supplied together")
+        if self.is_definitely_benign and (self.is_probably_benign or self.has_malignancy_not_hcc or self.has_tumor_in_vein):
+            errors.append("Conflicting benign and malignant special features")
         return errors
 
 
