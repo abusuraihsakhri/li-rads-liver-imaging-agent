@@ -157,7 +157,7 @@ def categorize(observation: LiverObservation) -> LIRADSResult:
         major_features=major_features,
         ancillary_malignancy=observation.ancillary_favoring_malignancy,
         ancillary_benignity=observation.ancillary_favoring_benignity,
-        treatment_eligible=False,
+        treatment_eligible=None,
         treatment_note="Imaging category does not independently determine treatment or transplant eligibility.",
         notes=notes,
     )
