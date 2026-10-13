@@ -69,9 +69,9 @@ def test_batch_boolean_false_is_not_stat(tmp_path):
     source = tmp_path / "cases.csv"
     target = tmp_path / "results.csv"
     source.write_text(
-        "case_id,metric_primary,metric_secondary,is_stat,status_flag\\n"
-        "NO-STAT,10,2,False,NORMAL\\n"
-        "YES-STAT,10,2,True,NORMAL\\n", encoding="utf-8"
+        "case_id,metric_primary,metric_secondary,is_stat,status_flag\n"
+        "NO-STAT,10,2,False,NORMAL\n"
+        "YES-STAT,10,2,True,NORMAL\n", encoding="utf-8"
     )
     assert main(["batch", "-i", str(source), "-o", str(target)]) == 0
     with target.open(newline="", encoding="utf-8") as stream:
