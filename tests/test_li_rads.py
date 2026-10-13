@@ -63,7 +63,7 @@ class TestLR5:
 # ── LR-4 (Probably HCC) Tests ──────────────────────────────────────
 
 class TestLR4:
-    def test_lr4_15mm_ahe_only(self):
+    def test_lr3_15mm_ahe_only(self):
         """15mm + AHE alone = LR-3."""
         obs = LiverObservation("O1", size_mm=15, arterial_hyperenhancement=True)
         r = categorize(obs)
@@ -76,7 +76,7 @@ class TestLR4:
         r = categorize(obs)
         assert r.category == LIRADSCategory.LR_4
 
-    def test_lr4_10mm_ahe_only(self):
+    def test_lr3_10mm_ahe_only(self):
         """10mm + AHE alone = LR-3."""
         obs = LiverObservation("O1", size_mm=10, arterial_hyperenhancement=True)
         r = categorize(obs)
@@ -111,7 +111,7 @@ class TestLR3:
         assert r.category == LIRADSCategory.LR_3
 
 
-# ── LR-2 (Probably Benign) Tests ───────────────────────────────────
+# ── Small observations without major features ───────────────────────────────────
 
 class TestLR2:
     def test_small_without_features_is_lr3(self):
